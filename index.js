@@ -29,11 +29,11 @@ function FileCache(options){
 
   // list existing cache contents
   this.ready = this._fs.ensure(this.localRoot)
-  .then(function(entry){
-    self.localInternalURL = typeof entry.toInternalURL === 'function'? entry.toInternalURL(): entry.toURL();
-    self.localUrl = entry.toURL();
-    return self.list();
-  });
+    .then(function(entry){
+      self.localInternalURL = typeof entry.toInternalURL === 'function'? entry.toInternalURL(): entry.toURL();
+      self.localUrl = entry.toURL();
+      return self.list();
+    });
 }
 
 FileCache.hash = hash;
@@ -106,6 +106,57 @@ FileCache.prototype.isDirty = function isDirty(){
   return this.getDownloadQueue().length > 0;
 };
 
+FileCache.prototype.downloadFile = function download(url){
+  var fs = this._fs;
+  var self = this;
+
+  return new Promise(function(resolve,reject){
+    // make sure cache directory exists and that
+    // we have retrieved the latest cache contents
+    // to avoid downloading files we already have!
+    fs.ensure(self.localRoot).then(function(){
+      return self.list();
+    }).then(function(){
+      // no downloads needed, resolve
+      url = self.toServerURL(url);
+
+      if(self._added.indexOf(url) === -1) {
+        self._added.push(url);
+      } else {
+        resolve(self);
+        return;
+      }
+
+      var errors = [];
+      var path = self.toPath(url);
+
+      // callback
+      var onDone = function(){
+        // check if we got everything
+        self.list().then(function(){
+          // Yes, we're not dirty anymore!
+          if(errors.length === 0) {
+            resolve(self);
+          } else {
+            reject(errors);
+          }
+        },reject);
+      };
+      var onErr = function(err){
+        if(err && err.target && err.target.error) err = err.target.error;
+        errors.push(err);
+        onDone();
+      };
+
+      var downloadUrl = url;
+      if(self._cacheBuster) downloadUrl += "?"+Date.now();
+      var download = fs.download(downloadUrl,path,{retry:self._retry});
+      download.then(onDone,onErr);
+    },reject);
+  });
+};
+
+
 FileCache.prototype.download = function download(onprogress,includeFileProgressEvents){
   var fs = this._fs;
   var self = this;
@@ -145,7 +196,7 @@ FileCache.prototype.download = function download(onprogress,includeFileProgressE
             ev.path = path;
             ev.percentage = done / total;
             if(ev.loaded > 0 && ev.total > 0 && done !== total){
-               ev.percentage += (ev.loaded / ev.total) / total;
+              ev.percentage += (ev.loaded / ev.total) / total;
             }
             ev.percentage = Math.max(percentage,ev.percentage);
             percentage = ev.percentage;
@@ -169,7 +220,7 @@ FileCache.prototype.download = function download(onprogress,includeFileProgressE
               // Yes, we're not dirty anymore!
               if(errors.length === 0) {
                 resolve(self);
-              // Aye, some files got left behind!
+                // Aye, some files got left behind!
               } else {
                 reject(errors);
               }
