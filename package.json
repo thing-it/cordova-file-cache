@@ -1,6 +1,6 @@
 {
-  "name": "cordova-file-cache",
-  "version": "1.2.2",
+  "name": "@thing-it/cordova-file-cache",
+  "version": "1.2.3",
   "description": "Cordova File Cache",
   "main": "index.js",
   "scripts": {
@@ -9,13 +9,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:markmarijnissen/cordova-file-cache.git"
+    "url": "git@github.com:thing-it/cordova-file-cache.git"
   },
   "keywords": [
     "cordova",
     "file",
     "cache"
   ],
-  "author": "Mark Marijnissen",
+  "author": "Thing Technologies",
   "license": "MIT"
 }
